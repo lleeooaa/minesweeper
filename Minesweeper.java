@@ -1,4 +1,3 @@
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
 import javax.swing.plaf.metal.MetalButtonUI;
@@ -6,11 +5,12 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
 import java.util.List;
-
+import javax.swing.JLabel;
+import javax.swing.Timer;
 
 public class Minesweeper extends JFrame {
     private JButton[][] boardButtons;
-    private Cell[][] gameboard = new Cell[25][25];
+    private Cell[][] gameboard;
     private Color[] colour_list={new Color(0,0,255), new Color(0,128,0), new Color(255,0,0), new Color(0,0,128), new Color(128,0,0), new Color(0,128,128), new Color(0,0,0), new Color(128,128,128)};
     private boolean started = false;
 
@@ -22,15 +22,18 @@ public class Minesweeper extends JFrame {
         int rows = 24;
         int cols = 24; 
         boardButtons = new JButton[rows][cols];
+        gameboard = new Cell[rows][cols];
         JPanel boardPanel = new JPanel(new GridLayout(rows+1, cols));
 
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 boardButtons[i][j] = new JButton();
-                boardButtons[i][j].addActionListener(new ButtonClickListener(i, j));
+                boardButtons[i][j].addMouseListener(new ButtonClickListener(i, j));
                 boardButtons[i][j].setBackground(Color.darkGray);
                 boardButtons[i][j].setMargin(new Insets(0, 0, 0, 0));
                 boardPanel.add(boardButtons[i][j]);
+
+                gameboard[i][j]=new Cell(i,j);
             }
         }
 
@@ -47,7 +50,6 @@ public class Minesweeper extends JFrame {
         List<Integer> choose = new ArrayList<Integer>();
         for(int i=0;i<row;i++){
             for(int j=0;j<col;j++){
-                gameboard[i][j]=new Cell(i,j);
                 choose.add(i*24+j);
             }
         }
@@ -57,6 +59,7 @@ public class Minesweeper extends JFrame {
             int randomIndex = rand.nextInt(choose.size());
             int randomElement = choose.get(randomIndex);
             gameboard[Math.floorDiv(randomElement, 24)][randomElement%24].type="mine";
+            //boardButtons[Math.floorDiv(randomElement, 24)][randomElement%24].setEnabled(false);
             choose.remove(randomIndex);
         }
         for(int i=0;i<row;i++){
@@ -110,13 +113,16 @@ public class Minesweeper extends JFrame {
     private void reveal(int row, int col){
         boardButtons[row][col].setEnabled(false);
         boardButtons[row][col].setBackground(Color.white);
-        if (gameboard[row][col].type=="empty"){
+
+        if (gameboard[row][col].type=="empty")
             flooding(row,col);
-        }
+
         else if (gameboard[row][col].type=="mine") {
             boardButtons[row][col].setBackground(Color.red);
+            game_end(false);
         }
-        else{
+
+        else {
             boardButtons[row][col].setText(gameboard[row][col].type);
             boardButtons[row][col].setUI(new MetalButtonUI() {
                 protected Color getDisabledTextColor() {
@@ -124,6 +130,8 @@ public class Minesweeper extends JFrame {
                 }
             });
             boardButtons[row][col].setFont(new FontUIResource("Arial", Font.BOLD, 20));
+            if (check_game_end())
+                game_end(true);
         }
     }
 
@@ -134,9 +142,8 @@ public class Minesweeper extends JFrame {
                 final int currentCol = col;
                 boardButtons[row][col].setEnabled(false);
                 boardButtons[row][col].setBackground(Color.white);
-                if (gameboard[row][col].type=="empty"){
-                    ;
-                }
+                boardButtons[row][col].setIcon(null);
+                if (gameboard[row][col].type=="empty"){}
                 else if (gameboard[row][col].type=="mine") {
                     boardButtons[row][col].setBackground(Color.red);
                 }
@@ -151,6 +158,47 @@ public class Minesweeper extends JFrame {
                 }
             }
         }
+    }
+
+    private void game_end(boolean win) {
+        if (win) {
+            full_reveal();
+            int option = JOptionPane.showOptionDialog(null, "Retry?", "You Win", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
+            if (option == JOptionPane.YES_OPTION) 
+                reload();
+            else 
+                System.exit(0);
+        }
+        else{
+            for (int i=0;i<24;i++){
+                for (int j=0;j<24;j++){
+                    boardButtons[i][j].setEnabled(false);
+                    if (gameboard[i][j].type=="mine")
+                        boardButtons[i][j].setBackground(Color.red);
+                }
+            }
+            int option = JOptionPane.showOptionDialog(null, "Retry?", "Game Over", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
+            if (option == JOptionPane.YES_OPTION) 
+                reload();
+            else 
+                System.exit(0);
+        }
+    }
+
+    private boolean check_game_end() {
+        for (int row=0;row<24;row++){
+            for (int col=0;col<24;col++){
+                if (gameboard[row][col].type!="mine" && boardButtons[row][col].isEnabled())
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    private void reload() {
+        started=false;
+        dispose();
+        new Minesweeper();
     }
 
     public class Cell {
@@ -168,25 +216,21 @@ public class Minesweeper extends JFrame {
 
         private void flag() {
             if (flagged){
-                boardButtons[x][y].setEnabled(true);
+                boardButtons[x][y].setIcon(null);
                 flagged=false;
             }
             else{
-                boardButtons[x][y].setEnabled(false);
                 flagged=true;
-                try {
-                    Image img = ImageIO.read(getClass().getResource("resources/water.bmp"));
-                    button.setIcon(new ImageIcon(img));
-                  } catch (Exception ex) {
-                    System.out.println(ex);
-                  }
-                Image img = ImageIO.read(getClass().getResource("resources/water.bmp"));
-                boardButtons[x][y].setIcon(new ImageIcon(img));
+                ImageIcon img = new ImageIcon("flag_icon.png");
+                Image scaled_img = img.getImage().getScaledInstance(20, 20, DO_NOTHING_ON_CLOSE);
+                boardButtons[x][y].setIcon(new ImageIcon(scaled_img));
             }
         }
     }
 
-    private class ButtonClickListener implements ActionListener {
+    private class 
+
+    private class ButtonClickListener implements MouseListener {
         private int row;
         private int col;
 
@@ -195,20 +239,30 @@ public class Minesweeper extends JFrame {
             this.col = col;
         }
 
-
         @Override
-        public void actionPerformed(ActionEvent e) {
-            // Handle button click event
+        public void mouseClicked(MouseEvent e) {}
+        @Override
+        public void mouseReleased(MouseEvent e) {
             JButton clickedButton = (JButton) e.getSource();
-            if (clickedButton == boardButtons[row][col]) {
-                if (!started) {
-                    gameboard_init(24,24,99,row,col);
-                    started=true;
+            if (clickedButton == boardButtons[row][col] && boardButtons[row][col].isEnabled()) {
+                if (SwingUtilities.isLeftMouseButton(e) && !gameboard[row][col].flagged){
+                    if (!started) {
+                        gameboard_init(24,24,99,row,col);
+                        started=true;
+                    }
+                    //full_reveal();
+                    reveal(row,col);
                 }
-                //full_reveal();
-                reveal(row,col);
+                else if(SwingUtilities.isRightMouseButton(e) && boardButtons[row][col].isEnabled()) 
+                    gameboard[row][col].flag();
             }
         }
+        @Override
+        public void mousePressed(MouseEvent e) {}
+        @Override
+        public void mouseEntered(MouseEvent e) {}
+        @Override
+        public void mouseExited(MouseEvent e) {}
     }
 
     public static void main(String[] args) {
