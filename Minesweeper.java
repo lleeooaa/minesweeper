@@ -5,20 +5,21 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
 import java.util.List;
-import javax.swing.JLabel;
 import javax.swing.Timer;
 
 public class Minesweeper extends JFrame {
     private JButton[][] boardButtons;
     private Cell[][] gameboard;
-    private Color[] colour_list={new Color(0,0,255), new Color(0,128,0), new Color(255,0,0), new Color(0,0,128), new Color(128,0,0), new Color(0,128,128), new Color(0,0,0), new Color(128,128,128)};
-    private boolean started = false;
+    private final Color[] colour_list={new Color(0,0,255), new Color(0,128,0), new Color(255,0,0), new Color(0,0,128), new Color(128,0,0), new Color(0,128,128), new Color(0,0,0), new Color(128,128,128)};
+    private boolean started;
+    private int seconds;
+    private Timer timer;
 
     public Minesweeper() {
         setTitle("Minesweeper");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-
-        // Create the game board with buttons
+        started=false;
+        seconds=0;
         int rows = 24;
         int cols = 24; 
         boardButtons = new JButton[rows][cols];
@@ -37,13 +38,19 @@ public class Minesweeper extends JFrame {
             }
         }
 
+        JLabel timerLabel = new JLabel("0:00");
+        timerLabel.setSize(30,30);
+        timerLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        timer = new Timer(1000, e -> {
+            seconds++;
+            timerLabel.setText(Math.floorDiv(seconds, 60)+":"+seconds%60);
+        });
         add(boardPanel, BorderLayout.CENTER);
-        setSize(600, 625);
+        add(timerLabel, BorderLayout.NORTH);
+        setSize(800, 850);
         setLocationRelativeTo(null);
         setVisible(true);
     }
-
-
         
     private void gameboard_init(int row, int col, int mine_num, int start_x , int start_y) {
         Random rand = new Random();
@@ -59,7 +66,7 @@ public class Minesweeper extends JFrame {
             int randomIndex = rand.nextInt(choose.size());
             int randomElement = choose.get(randomIndex);
             gameboard[Math.floorDiv(randomElement, 24)][randomElement%24].type="mine";
-            //boardButtons[Math.floorDiv(randomElement, 24)][randomElement%24].setEnabled(false);
+            boardButtons[Math.floorDiv(randomElement, 24)][randomElement%24].setEnabled(false);
             choose.remove(randomIndex);
         }
         for(int i=0;i<row;i++){
@@ -76,6 +83,7 @@ public class Minesweeper extends JFrame {
                     gameboard[i][j].type=Integer.toString(mine);
             }
         }
+        timer.start();
     }
 
 
@@ -129,7 +137,7 @@ public class Minesweeper extends JFrame {
                     return colour_list[Integer.parseInt(gameboard[row][col].type)-1];
                 }
             });
-            boardButtons[row][col].setFont(new FontUIResource("Arial", Font.BOLD, 20));
+            boardButtons[row][col].setFont(new FontUIResource("Arial", Font.BOLD, 24));
             if (check_game_end())
                 game_end(true);
         }
@@ -161,9 +169,10 @@ public class Minesweeper extends JFrame {
     }
 
     private void game_end(boolean win) {
+        timer.stop();
         if (win) {
             full_reveal();
-            int option = JOptionPane.showOptionDialog(null, "Retry?", "You Win", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
+            int option = JOptionPane.showOptionDialog(null, "Time : "+Math.floorDiv(seconds, 60)+":"+seconds%60+"\nRetry?", "You Win", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
             if (option == JOptionPane.YES_OPTION) 
                 reload();
             else 
@@ -227,8 +236,6 @@ public class Minesweeper extends JFrame {
             }
         }
     }
-
-    private class 
 
     private class ButtonClickListener implements MouseListener {
         private int row;
