@@ -66,7 +66,7 @@ public class Minesweeper extends JFrame {
             int randomIndex = rand.nextInt(choose.size());
             int randomElement = choose.get(randomIndex);
             gameboard[Math.floorDiv(randomElement, 24)][randomElement%24].type="mine";
-            boardButtons[Math.floorDiv(randomElement, 24)][randomElement%24].setEnabled(false);
+            //boardButtons[Math.floorDiv(randomElement, 24)][randomElement%24].setEnabled(false);
             choose.remove(randomIndex);
         }
         for(int i=0;i<row;i++){
